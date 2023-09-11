@@ -32,9 +32,10 @@ def load_paperdata(distance_f):
             min_dis, max_dis = min(min_dis, dis), max(max_dis, dis)
             distances[(x1, x2)] = float(d)
             distances[(x2, x1)] = float(d)
-    for i in xrange(max_id):
+    for i in range(max_id):
         distances[(i, i)] = 0.0
     logger.info("PROGRESS: load end")
+    print(f'max dis = {max_dis}; min dis = {min_dis}')
     return distances, max_dis, min_dis, max_id
 
 
@@ -92,7 +93,7 @@ def autoselect_dc(max_id, max_dis, min_dis, distances):
     return dc
 
 
-def local_density(max_id, distances, dc, guass=True, cutoff=False):
+def local_density(max_id, distances, dc, guass=False, cutoff=True):
     '''
     Compute all points' local density
 
@@ -111,8 +112,8 @@ def local_density(max_id, distances, dc, guass=True, cutoff=False):
     cutoff_func = lambda dij, dc: 1 if dij < dc else 0
     func = guass and guass_func or cutoff_func
     rho = [-1] + [0] * max_id
-    for i in xrange(1, max_id):
-        for j in xrange(i + 1, max_id + 1):
+    for i in range(1, max_id):
+        for j in range(i + 1, max_id + 1):
             rho[i] += func(distances[(i, j)], dc)
             rho[j] += func(distances[(i, j)], dc)
         if i % (max_id / 10) == 0:
@@ -137,8 +138,8 @@ def min_distance(max_id, max_dis, distances, rho):
     sort_rho_idx = np.argsort(-rho)
     delta, nneigh = [0.0] + [float(max_dis)] * (len(rho) - 1), [0] * len(rho)
     delta[sort_rho_idx[0]] = -1.
-    for i in xrange(1, max_id):
-        for j in xrange(0, i):
+    for i in range(1, max_id):
+        for j in range(0, i):
             old_i, old_j = sort_rho_idx[i], sort_rho_idx[j]
             if distances[(old_i, old_j)] < delta[old_i]:
                 delta[old_i] = distances[(old_i, old_j)]
@@ -166,11 +167,13 @@ class DensityPeakCluster(object):
         '''
         assert not (dc is not None and auto_select_dc)
         distances, max_dis, min_dis, max_id = load_func(distance_f)
+        print(f'max_dis = {max_dis}, min_dis = {min_dis}, max_id = {max_id}')
         if dc is None:
             dc = select_dc(max_id, max_dis, min_dis,
                            distances, auto=auto_select_dc)
+        print(f'cut-off dist = {dc}')
         rho = local_density(max_id, distances, dc)
-        return distances, max_dis, min_dis, max_id, rho
+        return distances, max_dis, min_dis, max_id, rho, dc
 
     def cluster(self, load_func, distance_f, density_threshold, distance_threshold, dc=None, auto_select_dc=False):
         '''
@@ -188,26 +191,67 @@ class DensityPeakCluster(object):
             local density vector, min_distance vector, nearest neighbor vector
         '''
         assert not (dc is not None and auto_select_dc)
-        distances, max_dis, min_dis, max_id, rho = self.local_density(
+        distances, max_dis, min_dis, max_id, rho, dc = self.local_density(
             load_func, distance_f, dc=dc, auto_select_dc=auto_select_dc)
         delta, nneigh = min_distance(max_id, max_dis, distances, rho)
         logger.info("PROGRESS: start cluster")
         cluster, ccenter = {}, {}  # cl/icl in cluster_dp.m
+        # for idx, (ldensity, mdistance, nneigh_item) in enumerate(zip(rho, delta, nneigh)):
+        #     if idx == 0:
+        #         continue
+        #     if ldensity >= density_threshold and mdistance >= distance_threshold:
+        #         ccenter[idx] = idx
+        #         cluster[idx] = idx
+        # for idx, (ldensity, mdistance, nneigh_item) in enumerate(zip(rho, delta, nneigh)):
+        #     if idx == 0 or idx in ccenter:
+        #         continue
+        #     if nneigh_item in cluster:
+        #         cluster[idx] = cluster[nneigh_item]
+        #     else:
+        #         cluster[idx] = -1
+        #     if idx % (max_id / 10) == 0:
+        #         logger.info("PROGRESS: at index #%i" % (idx))
+
+        # from github user lanbing510
         for idx, (ldensity, mdistance, nneigh_item) in enumerate(zip(rho, delta, nneigh)):
-            if idx == 0:
-                continue
+            if idx == 0: continue
             if ldensity >= density_threshold and mdistance >= distance_threshold:
                 ccenter[idx] = idx
                 cluster[idx] = idx
-        for idx, (ldensity, mdistance, nneigh_item) in enumerate(zip(rho, delta, nneigh)):
-            if idx == 0 or idx in ccenter:
-                continue
-            if nneigh_item in cluster:
-                cluster[idx] = cluster[nneigh_item]
             else:
                 cluster[idx] = -1
-            if idx % (max_id / 10) == 0:
-                logger.info("PROGRESS: at index #%i" % (idx))
+
+        #assignation
+        ordrho=np.argsort(-rho)
+        for i in range(ordrho.shape[0]-1):
+            if ordrho[i] == 0: continue
+            if cluster[ordrho[i]] == -1:
+                cluster[ordrho[i]] = cluster[nneigh[ordrho[i]]]
+            if i % (max_id / 10) == 0:
+                logger.info("PROGRESS: at index #%i" % (i))
+
+        #halo
+        halo, bord_rho = {},{}
+        for i in range(1,ordrho.shape[0]):
+            halo[i] = cluster[i]
+        if len(ccenter) > 0:
+            for idx in ccenter.keys():
+                bord_rho[idx] = 0.0
+            for i in range(1,rho.shape[0]-1):
+                for j in range(i + 1,rho.shape[0]):
+                    if cluster[i] != cluster[j] and distances[i,j] <= dc:
+                        rho_aver = (rho[i] + rho[j]) / 2.0
+                        if rho_aver > bord_rho[cluster[i]]:
+                            bord_rho[cluster[i]] = rho_aver
+                        if rho_aver > bord_rho[cluster[j]]:
+                            bord_rho[cluster[j]] = rho_aver
+            for i in range(1,rho.shape[0]):
+                if rho[i] < bord_rho[cluster[i]]:
+                    halo[i] = 0
+        for i in range(1,rho.shape[0]):
+            if halo[i] == 0:
+                cluster[i] =- 1
+        
         self.cluster, self.ccenter = cluster, ccenter
         self.distances = distances
         self.max_id = max_id

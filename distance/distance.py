@@ -36,7 +36,7 @@ class Distance():
         """
         if not isinstance(vec1, np.ndarray) or not isinstance(vec2, np.ndarray):
             raise TypeError("type of vec1 or vec2 is not numpy.ndarray")
-        if vec1.ndim is not 1 or vec2.ndim is not 1:
+        if vec1.ndim != 1 or vec2.ndim != 1:
             raise WrongVecError("vec1 or vec2 is not one line array")
         if vec1.size != vec2.size:
             raise WrongVecError("vec1 or vec2 is not same size")
@@ -103,4 +103,19 @@ class ConsineDistance(Distance):
         if num == 0:
             return 1
         return - num / denom
+# end ConsineDistance
+
+class EuclidianDistance(Distance):
+    """
+    euclidian distance
+
+    a sub class of Distance
+    """
+
+    def distance(self, vec1, vec2):
+        """
+        Compute distance of two vector by euclidian distance
+        """
+        super(EuclidianDistance, self).distance(vec1, vec2)  # super method
+        return linalg.norm(vec1 - vec2)
 # end ConsineDistance

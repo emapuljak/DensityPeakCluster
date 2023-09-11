@@ -10,6 +10,6 @@ from distance import *
 
 if __name__ == '__main__':
     builder = DistanceBuilder()
-    builder.load_points(r'../data/data_iris_flower/iris.data')
+    builder.load_points(r'../data/data_jets/jets_lat4.data')
     builder.build_distance_file_for_cluster(
-        EuclidianDistance(), r'../data/data_iris_flower/iris.forcluster')
+        ConsineDistance(), r'../data/data_jets/jets_lat4_cos.forcluster')

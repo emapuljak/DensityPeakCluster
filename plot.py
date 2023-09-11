@@ -5,7 +5,6 @@ import logging
 import numpy as np
 from cluster import *
 from sklearn import manifold
-from sklearn import __version__ as sklearn_version
 from plot_utils import *
 
 
@@ -41,9 +40,10 @@ def plot_cluster(cluster):
     '''
     logger.info("PLOT: cluster result, start multi-dimensional scaling")
     dp = np.zeros((cluster.max_id, cluster.max_id), dtype=np.float32)
+    print(cluster.max_id)
     cls = []
-    for i in xrange(1, cluster.max_id):
-        for j in xrange(i + 1, cluster.max_id + 1):
+    for i in range(1, cluster.max_id):
+        for j in range(i + 1, cluster.max_id + 1):
             dp[i - 1, j - 1] = cluster.distances[(i, j)]
             dp[j - 1, i - 1] = cluster.distances[(i, j)]
         cls.append(cluster.cluster[i])
@@ -52,18 +52,39 @@ def plot_cluster(cluster):
     fo = open(r'./tmp.txt', 'w')
     fo.write('\n'.join(map(str, cls)))
     fo.close()
-    version = versiontuple(sklearn_version)[1] > 14
-    if version[0] > 0 or version[1] > 14:
-        mds = manifold.MDS(max_iter=200, eps=1e-4, n_init=1,
-                           dissimilarity='precomputed')
-    else:
-        mds = manifold.MDS(max_iter=200, eps=1e-4, n_init=1)
-    dp_mds = mds.fit_transform(dp)
+    
+    mds = manifold.MDS(max_iter=200, eps=1e-4, n_init=1,dissimilarity='precomputed')
+    dp_mds = mds.fit_transform(dp.astype(np.float64))
     logger.info("PLOT: end mds, start plot")
-    plot_scatter_diagram(1, dp_mds[:, 0], dp_mds[
-                         :, 1], title='cluster', style_list=cls)
+    plot_scatter_diagram(1, dp_mds[:, 0], dp_mds[:, 1], title='2D Nonclassical Multidimensional Scaling', style_list = cls)
 
 
+def plot_rhodelta_rho(rho, delta):
+        
+    '''
+    Plot scatter diagram for rho*delta_rho points
+
+    Args:
+        rho   : rho list
+        delta : delta list
+    '''
+    logger.info("PLOT: rho*delta_rho plot")
+    y = rho*delta
+    r_index = np.argsort(-y)
+    x = np.zeros(y.shape[0])
+    idx = 0
+    for r in r_index:
+        x[r] = idx
+        idx += 1
+
+    plt.figure(2)
+    plt.clf()
+    plt.scatter(x,y)
+    plt.xlabel('sorted rho')
+    plt.ylabel('rho*delta')
+    plt.title("Decision Graph RhoDelta-Rho")
+    plt.show()
+        
 if __name__ == '__main__':
     logging.basicConfig(
         format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
