@@ -58,7 +58,7 @@ tmp.txt
 data/data_jets/
 
 # results
-results/
+results/*
 
 __pycache__/
 .DS_Store
