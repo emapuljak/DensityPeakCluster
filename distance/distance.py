@@ -7,6 +7,7 @@ from error_wrongvec import WrongVecError
 
 import numpy as np
 import numpy.linalg as linalg
+from scipy.spatial.distance import cityblock
 
 
 class Distance():
@@ -114,8 +115,23 @@ class EuclidianDistance(Distance):
 
     def distance(self, vec1, vec2):
         """
-        Compute distance of two vector by euclidian distance
+        Compute distance of two vector by euclidian (l2) distance
         """
         super(EuclidianDistance, self).distance(vec1, vec2)  # super method
         return linalg.norm(vec1 - vec2)
-# end ConsineDistance
+# end EuclidianDistance
+
+class ManhattanDistance(Distance):
+    """
+    manhattan distance
+
+    a sub class of Distance
+    """
+
+    def distance(self, vec1, vec2):
+        """
+        Compute distance of two vector by manhattan (l1) distance
+        """
+        super(ManhattanDistance, self).distance(vec1, vec2)  # super method
+        return cityblock(vec1, vec2)
+# end ManhattanDistance

@@ -20,6 +20,7 @@ def load_paperdata(distance_f):
         distances dict, max distance, min distance, max continues id
     '''
     logger.info("PROGRESS: load data")
+    print('Loading distances')
     distances = {}
     min_dis, max_dis = sys.float_info.max, 0.0
     max_id = 0
@@ -93,7 +94,7 @@ def autoselect_dc(max_id, max_dis, min_dis, distances):
     return dc
 
 
-def local_density(max_id, distances, dc, guass=False, cutoff=True):
+def local_density(max_id, distances, dc, guass=True, cutoff=False):
     '''
     Compute all points' local density
 
@@ -110,6 +111,9 @@ def local_density(max_id, distances, dc, guass=False, cutoff=True):
     logger.info("PROGRESS: compute local density")
     guass_func = lambda dij, dc: math.exp(- (dij / dc) ** 2)
     cutoff_func = lambda dij, dc: 1 if dij < dc else 0
+
+    print(f'guass flag = {guass}')
+    print(f'cutoff flag = {cutoff}')
     func = guass and guass_func or cutoff_func
     rho = [-1] + [0] * max_id
     for i in range(1, max_id):
@@ -122,32 +126,32 @@ def local_density(max_id, distances, dc, guass=False, cutoff=True):
 
 
 def min_distance(max_id, max_dis, distances, rho):
-    '''
-    Compute all points' min distance to the higher local density point(which is the nearest neighbor)
+	'''
+	Compute all points' min distance to the higher local density point(which is the nearest neighbor)
 
-    Args:
-            max_id    : max continues id
-            max_dis   : max distance for all points
-            distances : distance dict
-            rho       : local density vector that index is the point index that start from 1
-
-    Returns:
-        min_distance vector, nearest neighbor vector
-    '''
-    logger.info("PROGRESS: compute min distance to nearest higher density neigh")
-    sort_rho_idx = np.argsort(-rho)
-    delta, nneigh = [0.0] + [float(max_dis)] * (len(rho) - 1), [0] * len(rho)
-    delta[sort_rho_idx[0]] = -1.
-    for i in range(1, max_id):
-        for j in range(0, i):
-            old_i, old_j = sort_rho_idx[i], sort_rho_idx[j]
-            if distances[(old_i, old_j)] < delta[old_i]:
-                delta[old_i] = distances[(old_i, old_j)]
-                nneigh[old_i] = old_j
-        if i % (max_id / 10) == 0:
-            logger.info("PROGRESS: at index #%i" % (i))
-    delta[sort_rho_idx[0]] = max(delta)
-    return np.array(delta, np.float32), np.array(nneigh, np.float32)
+	Args:
+		max_id    : max continues id
+		max_dis   : max distance for all points
+		distances : distance dict
+		rho       : local density vector that index is the point index that start from 1
+	
+	Returns:
+	    min_distance vector, nearest neighbor vector
+	'''
+	logger.info("PROGRESS: compute min distance to nearest higher density neigh")
+	sort_rho_idx = np.argsort(-rho)
+	delta, nneigh = [0.0] + [float(max_dis)] * (len(rho) - 1), [0] * len(rho)
+	delta[sort_rho_idx[0]] = -1.
+	for i in range(1, max_id):
+		for j in range(0, i):
+			old_i, old_j = sort_rho_idx[i], sort_rho_idx[j]
+			if distances[(old_i, old_j)] < delta[old_i]:
+				delta[old_i] = distances[(old_i, old_j)]
+				nneigh[old_i] = old_j
+		if i % (max_id / 10) == 0:
+			logger.info("PROGRESS: at index #%i" % (i))
+	delta[sort_rho_idx[0]] = max(delta)
+	return np.array(delta, np.float32), np.array(nneigh, np.float32)
 
 
 class DensityPeakCluster(object):
@@ -218,10 +222,13 @@ class DensityPeakCluster(object):
             if ldensity >= density_threshold and mdistance >= distance_threshold:
                 ccenter[idx] = idx
                 cluster[idx] = idx
+                print(f'found one center: {idx}')
             else:
                 cluster[idx] = -1
-
+        
+        print(nneigh)
         #assignation
+        logger.info("PROGRESS: start assigning")
         ordrho=np.argsort(-rho)
         for i in range(ordrho.shape[0]-1):
             if ordrho[i] == 0: continue
@@ -231,6 +238,7 @@ class DensityPeakCluster(object):
                 logger.info("PROGRESS: at index #%i" % (i))
 
         #halo
+        logger.info("PROGRESS: start finding halo")
         halo, bord_rho = {},{}
         for i in range(1,ordrho.shape[0]):
             halo[i] = cluster[i]

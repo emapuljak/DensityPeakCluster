@@ -40,7 +40,7 @@ def plot_cluster(cluster):
     '''
     logger.info("PLOT: cluster result, start multi-dimensional scaling")
     dp = np.zeros((cluster.max_id, cluster.max_id), dtype=np.float32)
-    print(cluster.max_id)
+
     cls = []
     for i in range(1, cluster.max_id):
         for j in range(i + 1, cluster.max_id + 1):
@@ -49,9 +49,10 @@ def plot_cluster(cluster):
         cls.append(cluster.cluster[i])
     cls.append(cluster.cluster[cluster.max_id])
     cls = np.array(cls, dtype=np.float32)
-    fo = open(r'./tmp.txt', 'w')
-    fo.write('\n'.join(map(str, cls)))
-    fo.close()
+
+    # fo = open(r'./tmp.txt', 'w')
+    # fo.write('\n'.join(map(str, cls)))
+    # fo.close()
     
     mds = manifold.MDS(max_iter=200, eps=1e-4, n_init=1,dissimilarity='precomputed')
     dp_mds = mds.fit_transform(dp.astype(np.float64))

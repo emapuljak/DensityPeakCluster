@@ -25,7 +25,6 @@ class DistanceBuilder(object):
                 self.vectors.append(
                     np.array(list(map(float, line.strip().split(' '))), dtype=np.float32))
         self.vectors = np.array(self.vectors, dtype=np.float32)
-        print(self.vectors)
 
     def build_distance_file_for_cluster(self, distance_obj, filename):
         '''

@@ -17,4 +17,4 @@ def plot(data, auto_select_dc=False):
 
 
 if __name__ == '__main__':
-    plot('./data/data_jets/jets_lat4_cos.forcluster', auto_select_dc=True)
+    plot('./data/data_jets/jets_lat8.forcluster', auto_select_dc=True)
